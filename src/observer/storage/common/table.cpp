@@ -605,6 +605,75 @@ RC Table::create_index(Trx *trx, const char *index_name, const char *attribute_n
   return rc;
 }
 
+RC Table::drop_index(Trx *trx, const char *index_name)
+{
+  BplusTreeIndex *index = (BplusTreeIndex*)find_index(index_name);
+  if (nullptr == index) {
+    LOG_ERROR("Failed to find index while droping index (%s) on table (%s).",
+        index_name,
+        name());
+    return RC::SCHEMA_INDEX_NOT_EXIST;
+  }
+  
+  RC rc = index->sync();
+  rc = index->close();
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to sync index while droping index (%s) on table (%s).",
+        index_name,
+        name());
+    return rc;
+  }
+  TableMeta new_table_meta(table_meta_);
+  
+  rc = new_table_meta.rm_index(index->index_meta());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to drop index meta while droping index(%s) on table (%s).",
+        index_name,
+        name());
+    return rc;
+  }
+  std::string tmp_file = table_meta_file(base_dir_.c_str(), name()) + ".tmp";
+  std::fstream fs;
+  fs.open(tmp_file, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+  if (!fs.is_open()) {
+     LOG_ERROR("Failed to open file for write. file name=%s, errmsg=%s", tmp_file.c_str(), strerror(errno));
+     return RC::IOERR;  // rm索引中途出错，要做还原操作
+  }
+  if (new_table_meta.serialize(fs) < 0) {
+    LOG_ERROR("Failed to dump new table meta to file: %s. sys err=%d:%s", tmp_file.c_str(), errno, strerror(errno));
+    return RC::IOERR;
+  }
+  fs.close();
+  // 覆盖原始元数据文件
+  std::string meta_file = table_meta_file(base_dir_.c_str(), name());
+  int ret = rename(tmp_file.c_str(), meta_file.c_str());
+  if (ret != 0) {
+    LOG_ERROR("Failed to rename tmp meta file (%s) to normal meta file (%s) while droping index (%s) on table (%s). " "system error=%d:%s",
+        tmp_file.c_str(),
+        meta_file.c_str(),
+        index_name,
+        name(),
+        errno,
+        strerror(errno));
+   return RC::IOERR;
+  }
+  
+  std::string index_file  = table_index_file(base_dir_.c_str(), name(), index_name);
+  if(0 != unlink(index_file.c_str())) {
+    LOG_ERROR("Failed to unlink .index file while droping index (%s) on table (%s).",
+        index_name,
+        name());
+    return RC::IOERR;
+  }
+  
+  delete index;
+
+  table_meta_.swap(new_table_meta);
+
+  LOG_INFO("Successfully drop index (%s) on the table (%s)", index_name, name());
+  return rc;
+}
+
 RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value, int condition_num,
     const Condition conditions[], int *updated_count)
 {

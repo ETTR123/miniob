@@ -167,7 +167,9 @@ void ExecuteStage::handle_request(common::StageEvent *event)
     } break;
 
     case SCF_DROP_TABLE:
-    case SCF_DROP_INDEX:
+    case SCF_DROP_INDEX: {
+      do_drop_index(sql_event);
+    }break;
     case SCF_LOAD_DATA: {
       default_storage_stage_->handle_event(event);
     } break;
@@ -443,6 +445,7 @@ RC ExecuteStage::do_help(SQLStageEvent *sql_event)
                          "insert into `table` values(`value1`,`value2`);\n"
                          "update `table` set column=value [where `column`=`value`];\n"
                          "delete from `table` [where `column`=`value`];\n"
+                         "drop index `index name` on `table`;\n" 
                          "select [ * | `columns` ] from `table`;\n";
   session_event->set_response(response);
   return RC::SUCCESS;
@@ -474,6 +477,22 @@ RC ExecuteStage::do_create_index(SQLStageEvent *sql_event)
   }
 
   RC rc = table->create_index(nullptr, create_index.index_name, create_index.attribute_name);
+  sql_event->session_event()->set_response(rc == RC::SUCCESS ? "SUCCESS\n" : "FAILURE\n");
+  return rc;
+}
+
+RC ExecuteStage::do_drop_index(SQLStageEvent *sql_event)
+{
+  SessionEvent *session_event = sql_event->session_event();
+  Db *db = session_event->session()->get_current_db();
+  const DropIndex &drop_index = sql_event->query()->sstr.drop_index;
+  Table *table = db->find_table(drop_index.relation_name);
+  if (nullptr == table) {
+    session_event->set_response("FAILURE\n");
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+  
+  RC rc = table->drop_index(nullptr, drop_index.index_name);
   sql_event->session_event()->set_response(rc == RC::SUCCESS ? "SUCCESS\n" : "FAILURE\n");
   return rc;
 }

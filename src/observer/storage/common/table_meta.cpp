@@ -17,6 +17,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "storage/common/table_meta.h"
 #include "json/json.h"
+#include <debug/assertions.h>
 #include "common/log/log.h"
 #include "storage/trx/trx.h"
 
@@ -103,6 +104,26 @@ RC TableMeta::add_index(const IndexMeta &index)
   indexes_.push_back(index);
   return RC::SUCCESS;
 }
+
+RC TableMeta::rm_index(const IndexMeta &index)
+{
+  int32_t idx = -1;
+  for (size_t iter = 0; iter < indexes_.size(); ++iter) {
+    if (0 == strcmp(indexes_[iter].name(), index.name())) {
+        idx = iter;
+        break;
+    }
+  }
+  if (idx == - 1) {
+    LOG_ERROR("Failed to remove index meta, table name=%s, index name=%s",
+        name(),
+        index.name());
+    return RC::SCHEMA_INDEX_NOT_EXIST;
+  }
+  indexes_.erase(indexes_.begin() + idx);
+  return RC::SUCCESS;
+}
+
 
 const char *TableMeta::name() const
 {
