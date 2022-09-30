@@ -65,6 +65,8 @@ public:
 
   RC drop_index(Trx *trx, const char *index_name);
 
+  RC destroy();
+
   RC get_record_scanner(RecordFileScanner &scanner);
 
   RecordFileHandler *record_handler() const

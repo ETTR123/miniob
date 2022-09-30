@@ -166,7 +166,9 @@ void ExecuteStage::handle_request(common::StageEvent *event)
       do_desc_table(sql_event);
     } break;
 
-    case SCF_DROP_TABLE:
+    case SCF_DROP_TABLE: {
+      do_drop_table(sql_event);
+    }break;
     case SCF_DROP_INDEX: {
       do_drop_index(sql_event);
     }break;
@@ -446,6 +448,7 @@ RC ExecuteStage::do_help(SQLStageEvent *sql_event)
                          "update `table` set column=value [where `column`=`value`];\n"
                          "delete from `table` [where `column`=`value`];\n"
                          "drop index `index name` on `table`;\n" 
+                         "drop table `table name`;\n"
                          "select [ * | `columns` ] from `table`;\n";
   session_event->set_response(response);
   return RC::SUCCESS;
@@ -465,6 +468,27 @@ RC ExecuteStage::do_create_table(SQLStageEvent *sql_event)
   }
   return rc;
 }
+
+RC ExecuteStage::do_drop_table(SQLStageEvent *sql_event)
+{
+  SessionEvent *session_event = sql_event->session_event();
+  Db *db = session_event->session()->get_current_db();
+  const DropTable &drop_table = sql_event->query()->sstr.drop_table;
+  Table *table = db->find_table(drop_table.relation_name);
+  if (nullptr == table) {
+    session_event->set_response("SUCCESS\n");
+    return RC::SCHEMA_TABLE_NOT_EXIST;
+  }
+  RC rc = db->drop_table(table);
+  if (rc != RC::SUCCESS) {
+    session_event->set_response("FAILURE\n");
+    LOG_ERROR("Failed to drop table, table_name : (%s)",drop_table.relation_name);
+  }
+  
+  session_event->set_response("SUCCESS\n");
+  return rc;
+}
+
 RC ExecuteStage::do_create_index(SQLStageEvent *sql_event)
 {
   SessionEvent *session_event = sql_event->session_event();

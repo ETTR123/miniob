@@ -48,6 +48,7 @@ protected:
   RC do_insert(SQLStageEvent *sql_event);
   RC do_delete(SQLStageEvent *sql_event);
   RC do_drop_index(SQLStageEvent *sql_event);
+  RC do_drop_table(SQLStageEvent *sql_event);
 
 protected:
 private:

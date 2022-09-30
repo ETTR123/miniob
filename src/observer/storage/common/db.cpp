@@ -52,6 +52,40 @@ RC Db::init(const char *name, const char *dbpath)
   return open_all_tables();
 }
 
+RC Db::drop_table(Table *table)
+{
+  RC rc = RC::SUCCESS;
+  rc = table->sync();
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed drop table while sycn table, table_name: (%s)",table->name());
+    return rc;
+  }
+
+  rc = table->destroy();
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to drop index while droping table: (%)", table->name());
+    return rc;
+  }
+
+  std::string table_file_path = table_meta_file(path_.c_str(), table->name());
+  if (0 != unlink(table_file_path.c_str())) {
+    LOG_ERROR("Failed to unlinking table_meta_file (%s) while dropping table (%s)", table_file_path.c_str(), table->name());
+    return RC::IOERR;
+  }
+
+  std::string data_file_path = table_data_file(path_.c_str(), table->name());
+  if (0 != unlink(data_file_path.c_str())) {
+    LOG_ERROR("Failed to unlinking data_file_path (%s) while dropping table (%s)", data_file_path.c_str(), table->name());
+    return RC::IOERR;
+  }
+
+  std::unordered_map<std::string, Table *>::iterator iter = opened_tables_.find(table->name());
+  opened_tables_.erase(iter);
+  LOG_INFO("finish to drop table:(%s)", table->name());
+  delete table;
+  return rc;
+}
+
 RC Db::create_table(const char *table_name, int attribute_count, const AttrInfo *attributes)
 {
   RC rc = RC::SUCCESS;

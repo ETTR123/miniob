@@ -623,6 +623,7 @@ RC Table::drop_index(Trx *trx, const char *index_name)
         name());
     return rc;
   }
+
   TableMeta new_table_meta(table_meta_);
   
   rc = new_table_meta.rm_index(index->index_meta());
@@ -673,6 +674,31 @@ RC Table::drop_index(Trx *trx, const char *index_name)
   LOG_INFO("Successfully drop index (%s) on the table (%s)", index_name, name());
   return rc;
 }
+
+RC Table::destroy()
+{
+  RC rc = RC::SUCCESS;
+  rc = sync();
+  
+  size_t index_num = table_meta_.index_num();
+  for (size_t i = 0; i < index_num; ++i) {
+    BplusTreeIndex *index = (BplusTreeIndex*)indexes_[i];
+    rc = index->sync();
+    rc = index->close();
+    if (rc != RC::SUCCESS) {
+      LOG_ERROR("Failed to drop index: (%s) while droping table: (%s)",index->index_meta().name(), name());
+      return rc;
+    }
+    
+    std::string index_file_path = table_index_file(base_dir_.c_str(), name(), index->index_meta().name());
+    if (0 != unlink(index_file_path.c_str())) {
+      LOG_ERROR("Failed to unlink .index file while droping index (%s) on table (%s).", index->index_meta().name(), name());
+      return RC::GENERIC_ERROR;
+    }
+  } 
+  return rc;
+}
+
 
 RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value, int condition_num,
     const Condition conditions[], int *updated_count)
