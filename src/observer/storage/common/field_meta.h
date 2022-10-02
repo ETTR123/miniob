@@ -16,7 +16,6 @@ See the Mulan PSL v2 for more details. */
 #define __OBSERVER_STORAGE_COMMON_FIELD_META_H__
 
 #include <string>
-
 #include "rc.h"
 #include "sql/parser/parse_defs.h"
 

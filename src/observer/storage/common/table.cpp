@@ -297,6 +297,34 @@ const TableMeta &Table::table_meta() const
   return table_meta_;
 }
 
+RC Table::replace_record(const char *attr_name, const Value &value, char *record_out)
+{
+  const int normal_field_start_index = table_meta_.sys_field_num();
+  int index_offset = -1;
+  for (int i = 0; i < table_meta_.field_num(); ++i) {
+    const FieldMeta *field = table_meta_.field(i + normal_field_start_index);
+    if (0 == strcmp(attr_name, field->name())) {
+      index_offset = i;
+      break;
+    }
+  }
+  if (-1 == index_offset) {
+    LOG_WARN("Input value don't match any table's schema while updating, table name:%s", table_meta_.name());
+    return RC::SCHEMA_FIELD_TYPE_MISMATCH;
+  }
+  
+  const FieldMeta *field = table_meta_.field(index_offset + normal_field_start_index);
+  size_t copy_len = field->len();
+  if (field->type() == CHARS) {
+    const size_t data_len = strlen((const char *)value.data);
+    if (copy_len > data_len) {
+      copy_len = data_len +1;
+    }
+  }
+  memcpy(record_out + field->offset(), value.data, copy_len);
+  return RC::SUCCESS; 
+}
+
 RC Table::make_record(int value_num, const Value *values, char *&record_out)
 {
   // 检查字段类型是否一致
@@ -705,6 +733,46 @@ RC Table::update_record(Trx *trx, const char *attribute_name, const Value *value
 {
   return RC::GENERIC_ERROR;
 }
+
+RC Table::update_record(Trx *trx, Record &record, const char *attribute_name, const Value &value)
+{
+  RC rc = RC::SUCCESS;
+  if (nullptr == record.data() || nullptr == attribute_name) {
+    LOG_ERROR("invalid agruments while updating record on table name:%s", name());
+    return RC::INVALID_ARGUMENT;
+  }
+  /*if (nullptr != trx) {
+    return trx->update_record(record, attr_name, value);
+  }
+  */
+  rc = delete_entry_of_indexes(record.data(), record.rid(), true);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("failed to delete entry in index while update record, table name:%s", name());
+    return rc;
+  }
+
+  rc = replace_record(attribute_name, value, record.data());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("failed to replace record while updating record, table name:%s", name());
+    return rc;
+  }
+ 
+
+  rc = insert_entry_of_indexes(record.data(), record.rid());
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("failed to insert entry in index while update record, table name:%s", name());
+    return rc;
+  }
+  
+  rc = record_handler_->update_record(&record);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("failed to update record on table name:%s", name());
+    return RC::GENERIC_ERROR;
+  }
+  return rc;
+}
+
+
 
 class RecordDeleter {
 public:
