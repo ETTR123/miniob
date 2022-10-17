@@ -14,7 +14,7 @@ See the Mulan PSL v2 for more details. */
 
 #include "common/log/log.h"
 #include "sql/operator/update_operator.h"
-#include "storage/common/record.h"
+#include "storage/record/record.h"
 #include "storage/common/table.h"
 #include "sql/stmt/update_stmt.h"
 
