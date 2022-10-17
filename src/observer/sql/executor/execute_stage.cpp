@@ -493,7 +493,7 @@ RC ExecuteStage::do_drop_table(SQLStageEvent *sql_event)
   const DropTable &drop_table = sql_event->query()->sstr.drop_table;
   Table *table = db->find_table(drop_table.relation_name);
   if (nullptr == table) {
-    session_event->set_response("SUCCESS\n");
+    session_event->set_response("FAILURE\n");
     return RC::SCHEMA_TABLE_NOT_EXIST;
   }
   RC rc = db->drop_table(table);
