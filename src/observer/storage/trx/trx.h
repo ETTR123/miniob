@@ -21,7 +21,7 @@ See the Mulan PSL v2 for more details. */
 #include <mutex>
 
 #include "sql/parser/parse.h"
-#include "storage/common/record_manager.h"
+#include "storage/record/record_manager.h"
 #include "rc.h"
 
 class Table;
@@ -79,8 +79,12 @@ public:
  */
 class Trx {
 public:
+  static std::atomic<int32_t> trx_id;
+
   static int32_t default_trx_id();
   static int32_t next_trx_id();
+  static void set_trx_id(int32_t id);
+
   static const char *trx_field_name();
   static AttrType trx_field_type();
   static int trx_field_len();
@@ -102,6 +106,10 @@ public:
   bool is_visible(Table *table, const Record *record);
 
   void init_trx_info(Table *table, Record &record);
+
+  void next_current_id();
+
+  int32_t get_current_id();
 
 private:
   void set_record_trx_id(Table *table, Record &record, int32_t trx_id, bool deleted) const;
