@@ -48,6 +48,9 @@ public:
       return compare_int((void *)v1, (void *)v2);
     }
       break;
+    case DATES: {
+      return compare_date((void *)v1, (void *)v2);
+    }
     case FLOATS: {
       return compare_float((void *)v1, (void *)v2);
     }

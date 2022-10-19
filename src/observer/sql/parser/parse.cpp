@@ -52,6 +52,27 @@ void value_init_float(Value *value, float v)
   value->data = malloc(sizeof(v));
   memcpy(value->data, &v, sizeof(v));
 }
+bool check_date(int y, int m, int d)
+{
+  static int mon[] = {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  bool leap = (y%400==0 || (y%100 && y%4==0));
+  return y >0 
+        && (m > 0)&&(m <= 12)
+        && (d > 0)&&(d <= ((m==2 && leap)?1:0) + mon[m]);
+}
+void value_init_date(Value* value, const char* v)
+{
+  value->type = DATES;
+  int y, m, d;
+//  printf("date_str: %s\n", v);
+  sscanf(v + 1, "%04d-%02d-%02d", &y, &m, &d);
+  bool b = check_date(y, m, d);
+  int dv = y*10000 + m*100 + d;
+  LOG_INFO("Parse Date, %d\n",dv);
+  value->data = malloc(sizeof(dv));
+  printf("date: %d\n", dv);
+  memcpy(value->data, &dv, sizeof(dv));
+ }
 void value_init_string(Value *value, const char *v)
 {
   value->type = CHARS;
@@ -63,6 +84,7 @@ void value_destroy(Value *value)
   free(value->data);
   value->data = nullptr;
 }
+
 
 void condition_init(Condition *condition, CompOp comp, int left_is_attr, RelAttr *left_attr, Value *left_value,
     int right_is_attr, RelAttr *right_attr, Value *right_value)
