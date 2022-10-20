@@ -396,6 +396,38 @@ IndexScanOperator *try_to_create_index_scan_operator(FilterStmt *filter_stmt)
   return oper;
 }
 
+RC check_select_value(SelectStmt *select_stmt) {
+  std::vector<Field> query_fields = select_stmt->query_fields();
+  std::vector<Table*> tables = select_stmt->tables();
+  FilterStmt *filter_stmt = select_stmt->filter_stmt();
+  
+  //todo check query fields  
+  if (0 == query_fields.size() || 0 == tables.size()) return RC::GENERIC_ERROR;
+  
+
+  // check filter_stmt
+  if (nullptr != filter_stmt && filter_stmt->filter_units().size() != 0) {
+    std::vector<FilterUnit *> filter_units = filter_stmt->filter_units();    
+    for (auto filter_unit : filter_units) {
+        const FieldMeta * field = nullptr;
+        FieldExpr *left = (FieldExpr*)filter_unit->left();
+        ValueExpr *right = (ValueExpr*)filter_unit->right();
+        if (nullptr == left || nullptr == right) return RC::GENERIC_ERROR;
+        for (auto table : tables) {
+             field = table->table_meta().field(left->field().field_name());
+             if (nullptr != field) break;
+        }
+        if (nullptr == field) return RC::GENERIC_ERROR;
+        
+        if (field->type() != right->get_tuple_cell()->attr_type()) return RC::GENERIC_ERROR;
+    
+    }
+    return RC::SUCCESS;
+  }
+    
+
+}
+
 RC ExecuteStage::do_select(SQLStageEvent *sql_event)
 {
   SelectStmt *select_stmt = (SelectStmt *)(sql_event->stmt());
@@ -406,7 +438,11 @@ RC ExecuteStage::do_select(SQLStageEvent *sql_event)
     rc = RC::UNIMPLENMENT;
     return rc;
   }
-
+  if (check_select_value(select_stmt) != RC::SUCCESS) {
+    LOG_ERROR("check select failed !\n");
+    session_event->set_response("FAILURE\n");
+    return RC::GENERIC_ERROR;
+  }
   Operator *scan_oper = try_to_create_index_scan_operator(select_stmt->filter_stmt());
   if (nullptr == scan_oper) {
     scan_oper = new TableScanOperator(select_stmt->tables()[0]);

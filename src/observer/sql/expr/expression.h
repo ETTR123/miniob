@@ -97,6 +97,7 @@ public:
   void get_tuple_cell(TupleCell &cell) const {
     cell = tuple_cell_;
   }
+  const TupleCell *get_tuple_cell() const { return &tuple_cell_; }
 
 private:
   TupleCell tuple_cell_;

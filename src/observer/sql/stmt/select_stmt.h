@@ -31,8 +31,8 @@ public:
 
   SelectStmt() = default;
   ~SelectStmt() override;
-
-  StmtType type() const override { return StmtType::SELECT; }
+  
+   StmtType type() const override { return StmtType::SELECT; }
 public:
   static RC create(Db *db, const Selects &select_sql, Stmt *&stmt);
 
