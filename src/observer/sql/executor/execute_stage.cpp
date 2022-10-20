@@ -422,10 +422,8 @@ RC check_select_value(SelectStmt *select_stmt) {
         if (field->type() != right->get_tuple_cell()->attr_type()) return RC::GENERIC_ERROR;
     
     }
-    return RC::SUCCESS;
   }
-    
-
+  return RC::SUCCESS; 
 }
 
 RC ExecuteStage::do_select(SQLStageEvent *sql_event)
