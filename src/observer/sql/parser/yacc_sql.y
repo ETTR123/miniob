@@ -19,7 +19,8 @@ typedef struct ParserContext {
   Value values[MAX_NUM];
   Condition conditions[MAX_NUM];
   CompOp comp;
-	char id[MAX_NUM];
+  char id[MAX_NUM];
+  int isvalue_error;
 } ParserContext;
 
 //获取子串
@@ -312,7 +313,7 @@ value:
   		value_init_float(&CONTEXT->values[CONTEXT->value_length++], $1);
 		}
     |DATE_STR{
-        value_init_date(&CONTEXT->values[CONTEXT->value_length++], $1);
+        value_init_date(&CONTEXT->values[CONTEXT->value_length++], &CONTEXT->isvalue_error, $1);
         }
     |SSS {
 			$1 = substr($1,1,strlen($1)-2);
@@ -582,12 +583,12 @@ extern void scan_string(const char *str, yyscan_t scanner);
 int sql_parse(const char *s, Query *sqls){
 	ParserContext context;
 	memset(&context, 0, sizeof(context));
-
+    context.isvalue_error = 1;
 	yyscan_t scanner;
 	yylex_init_extra(&context, &scanner);
 	context.ssql = sqls;
 	scan_string(s, scanner);
 	int result = yyparse(scanner);
 	yylex_destroy(scanner);
-	return result;
+	return result && context.isvalue_error;
 }

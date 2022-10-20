@@ -60,18 +60,23 @@ bool check_date(int y, int m, int d)
         && (m > 0)&&(m <= 12)
         && (d > 0)&&(d <= ((m==2 && leap)?1:0) + mon[m]);
 }
-void value_init_date(Value* value, const char* v)
+void value_init_date(Value* value, int *isvalid, const char* v)
 {
   value->type = DATES;
   int y, m, d;
 //  printf("date_str: %s\n", v);
   sscanf(v + 1, "%04d-%02d-%02d", &y, &m, &d);
   bool b = check_date(y, m, d);
+  if (!b) {
+    *isvalid = 0;
+    LOG_INFO("invalid date value!");
+  }
   int dv = y*10000 + m*100 + d;
-  LOG_INFO("Parse Date, %d\n",dv);
+//  LOG_INFO("Parse Date, %d\n",dv);
   value->data = malloc(sizeof(dv));
-  printf("date: %d\n", dv);
+//  printf("date: %d\n", dv);
   memcpy(value->data, &dv, sizeof(dv));
+  
  }
 void value_init_string(Value *value, const char *v)
 {
@@ -424,9 +429,11 @@ extern "C" int sql_parse(const char *st, Query *sqls);
 
 RC parse(const char *st, Query *sqln)
 {
-  sql_parse(st, sqln);
+  int valid = sql_parse(st, sqln);
 
   if (sqln->flag == SCF_ERROR)
+    return SQL_SYNTAX;
+  else if (!valid) 
     return SQL_SYNTAX;
   else
     return SUCCESS;
