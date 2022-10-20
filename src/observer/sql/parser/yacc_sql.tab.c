@@ -2098,5 +2098,6 @@ int sql_parse(const char *s, Query *sqls){
 	scan_string(s, scanner);
 	int result = yyparse(scanner);
 	yylex_destroy(scanner);
-	return result && context.isvalue_error;
+	if (context.isvalue_error == 0) return -1;
+    return result;
 }

@@ -433,7 +433,7 @@ RC parse(const char *st, Query *sqln)
 
   if (sqln->flag == SCF_ERROR)
     return SQL_SYNTAX;
-  else if (!valid) 
+  else if (valid == -1) 
     return SQL_SYNTAX;
   else
     return SUCCESS;
